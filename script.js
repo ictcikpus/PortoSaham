@@ -1,5 +1,5 @@
 // =======================================================
-// CONTROLLER: script.js (WITH PIN & SESSION MANAGEMENT)
+// CONTROLLER: script.js (WITH CHART.JS & MONTHLY SCHEDULE)
 // =======================================================
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzv8DyVt1Iv9BLmG1C01tpbScJy_iYmIblFFS1wh5RGfzkGQakOuLGdjhBN9U-LziY4Ow/exec";
@@ -8,6 +8,9 @@ let rawData = [];
 let currentFilter = 'ALL';
 let sortColumn = null;
 let sortAscending = true;
+let chartInstance = null;
+
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
 function getSavedPin() {
   return sessionStorage.getItem('dividen_pro_pin') || '';
@@ -17,10 +20,10 @@ function formatRp(num) {
   return 'Rp ' + Math.round(num).toLocaleString('id-ID');
 }
 
-// Auth Handlers
+// Login & Auth
 async function handleLogin(e) {
   e.preventDefault();
-  const pin = document.getElementById('pinInput').value;
+  const pin = document.getElementById('pinInput').value.trim();
   const btnLogin = document.getElementById('btnLogin');
   
   btnLogin.innerText = "Memverifikasi...";
@@ -35,7 +38,7 @@ async function handleLogin(e) {
     showToast('Login berhasil', 'success');
   } else {
     sessionStorage.removeItem('dividen_pro_pin');
-    showToast('PIN Salah atau gagal terhubung!', 'error');
+    showToast('PIN Salah! Pastikan PIN di Apps Script sudah di-deploy Versi Baru.', 'error');
   }
 
   btnLogin.innerText = "Buka Dashboard";
@@ -47,10 +50,10 @@ function handleLogout() {
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('pinInput').value = '';
-  showToast('Sesi telah berakhir', 'info');
+  showToast('Sesi berakhir', 'info');
 }
 
-// Fetch Data with PIN Validation
+// Fetch API
 async function fetchData() {
   const pin = getSavedPin();
   if (!pin) return false;
@@ -75,6 +78,7 @@ async function fetchData() {
 
     rawData = result;
     renderTable();
+    renderChartAndSchedule();
     return true;
   } catch (err) {
     console.error('API Error:', err);
@@ -86,7 +90,100 @@ async function fetchData() {
   }
 }
 
-// Render Table & KPI Cards
+// Render Monthly Chart & Matrix Schedule
+function renderChartAndSchedule() {
+  let monthlyAmounts = new Array(12).fill(0);
+  let monthlyEmitens = Array.from({ length: 12 }, () => []);
+
+  rawData.forEach(item => {
+    if (item.lot > 0 && item.divTahun > 0 && item.bulanDiv) {
+      const months = item.bulanDiv.split(',')
+        .map(m => parseInt(m.trim()))
+        .filter(m => m >= 1 && m <= 12);
+      
+      if (months.length > 0) {
+        const amountPerPayout = item.divTahun / months.length;
+        months.forEach(m => {
+          monthlyAmounts[m - 1] += amountPerPayout;
+          monthlyEmitens[m - 1].push(item.kode);
+        });
+      }
+    }
+  });
+
+  // 1. Render Bar Chart
+  const ctx = document.getElementById('dividendChart')?.getContext('2d');
+  if (ctx) {
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: monthNames,
+        datasets: [{
+          label: 'Estimasi Dividen (Rp)',
+          data: monthlyAmounts,
+          backgroundColor: 'rgba(16, 185, 129, 0.65)',
+          borderColor: '#10b981',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          hoverBackgroundColor: 'rgba(16, 185, 129, 0.9)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => 'Dividen: ' + formatRp(context.raw)
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: '#94a3b8', font: { size: 10 } }
+          },
+          y: {
+            grid: { color: 'rgba(30, 41, 59, 0.5)' },
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 10 },
+              callback: (val) => 'Rp ' + (val / 1000000).toFixed(1) + ' Jt'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 2. Render Matrix Jadwal Dividen Grid
+  const scheduleGrid = document.getElementById('monthlyScheduleGrid');
+  if (scheduleGrid) {
+    scheduleGrid.innerHTML = '';
+    monthNames.forEach((month, idx) => {
+      const amount = monthlyAmounts[idx];
+      const emitens = monthlyEmitens[idx];
+      const hasDiv = amount > 0;
+
+      scheduleGrid.innerHTML += `
+        <div class="p-2.5 rounded-xl border ${hasDiv ? 'bg-slate-800/80 border-emerald-500/40' : 'bg-slate-950/40 border-slate-800/60'} transition">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-xs ${hasDiv ? 'text-emerald-400' : 'text-slate-500'}">${month}</span>
+            <span class="text-[9px] font-semibold text-slate-400">${hasDiv ? formatRp(amount) : '-'}</span>
+          </div>
+          <div class="text-[9px] text-slate-300 truncate font-mono">
+            ${emitens.length > 0 ? emitens.join(', ') : '<span class="text-slate-600">Sepi</span>'}
+          </div>
+        </div>
+      `;
+    });
+  }
+}
+
+// Render Data Table & KPI
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   if (!tbody) return;
@@ -138,6 +235,7 @@ function renderTable() {
         <td class="py-3 px-3.5 font-semibold text-white">${formatRp(item.hargaSkrg)}</td>
         <td class="py-3 px-3.5 ${glColor}">${glPrefix}${item.gainLoss}%</td>
         <td class="py-3 px-3.5 font-medium">${item.yieldPct}%</td>
+        <td class="py-3 px-3.5 text-slate-400 font-mono text-[10px]">${item.bulanDiv || '-'}</td>
         <td class="py-3 px-3.5">
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${item.signalClass}">
             ${item.signal}
@@ -186,7 +284,7 @@ function sortData(column) {
   renderTable();
 }
 
-// Modal Handlers
+// Modal Edit
 function openModal(rowIdx) {
   const item = rawData.find(d => d.rowIdx === rowIdx);
   if (!item) return;
@@ -197,6 +295,7 @@ function openModal(rowIdx) {
   document.getElementById('editAvg').value = item.avgBeli;
   document.getElementById('editHarga').value = item.hargaSkrg;
   document.getElementById('editDPS').value = item.dps;
+  document.getElementById('editBulanDiv').value = item.bulanDiv || '';
   
   liveCalculateModal();
   document.getElementById('modal').classList.remove('hidden');
@@ -236,7 +335,8 @@ async function saveData(e) {
     lot: Number(document.getElementById('editLot').value),
     avgBeli: Number(document.getElementById('editAvg').value),
     hargaSkrg: Number(document.getElementById('editHarga').value),
-    dps: Number(document.getElementById('editDPS').value)
+    dps: Number(document.getElementById('editDPS').value),
+    bulanDiv: document.getElementById('editBulanDiv').value.trim()
   };
 
   try {
@@ -263,7 +363,7 @@ async function saveData(e) {
   }
 }
 
-// Toast System
+// Toast
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
@@ -278,7 +378,7 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.remove(), 3500);
 }
 
-// Initial Check
+// Init
 window.onload = async function() {
   const pin = getSavedPin();
   if (pin) {
