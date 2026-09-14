@@ -2,7 +2,6 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -15,7 +14,6 @@ body {
   border-radius: 9999px;
 }
 
-/* Hide Scrollbar for Horizontal Filter Bar on Mobile */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -24,7 +22,6 @@ body {
   scrollbar-width: none;
 }
 
-/* Tab Styling */
 .filter-tab {
   padding: 5px 12px;
   border-radius: 8px;
@@ -49,7 +46,6 @@ body {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
-/* Modal Animation */
 .modal-animation {
   animation: modalSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -65,7 +61,6 @@ body {
   }
 }
 
-/* Toast Animation */
 .toast-enter {
   animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
