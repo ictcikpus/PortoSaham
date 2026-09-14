@@ -1,5 +1,5 @@
 // =======================================================
-// CONTROLLER: script.js (WITH CHART.JS & MONTHLY SCHEDULE)
+// CONTROLLER: script.js (WITH INTERACTIVE CHARTS & ALIGNMENT EVALUATION)
 // =======================================================
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzv8DyVt1Iv9BLmG1C01tpbScJy_iYmIblFFS1wh5RGfzkGQakOuLGdjhBN9U-LziY4Ow/exec";
@@ -8,7 +8,8 @@ let rawData = [];
 let currentFilter = 'ALL';
 let sortColumn = null;
 let sortAscending = true;
-let chartInstance = null;
+let barChartInstance = null;
+let donutChartInstance = null;
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
@@ -20,7 +21,7 @@ function formatRp(num) {
   return 'Rp ' + Math.round(num).toLocaleString('id-ID');
 }
 
-// Login & Auth
+// Auth Handlers
 async function handleLogin(e) {
   e.preventDefault();
   const pin = document.getElementById('pinInput').value.trim();
@@ -78,7 +79,8 @@ async function fetchData() {
 
     rawData = result;
     renderTable();
-    renderChartAndSchedule();
+    renderInteractiveCharts();
+    evaluatePortfolioAlignment();
     return true;
   } catch (err) {
     console.error('API Error:', err);
@@ -90,10 +92,14 @@ async function fetchData() {
   }
 }
 
-// Render Monthly Chart & Matrix Schedule
-function renderChartAndSchedule() {
+// 1. Render Dual Interactive Charts (Bar + Donut)
+function renderInteractiveCharts() {
   let monthlyAmounts = new Array(12).fill(0);
   let monthlyEmitens = Array.from({ length: 12 }, () => []);
+
+  // Filter emiten yang dimiliki (lot > 0) dan membagikan dividen
+  const activeDividendStocks = rawData.filter(d => d.lot > 0 && d.divTahun > 0);
+  const totalDivAll = activeDividendStocks.reduce((sum, item) => sum + item.divTahun, 0);
 
   rawData.forEach(item => {
     if (item.lot > 0 && item.divTahun > 0 && item.bulanDiv) {
@@ -105,29 +111,29 @@ function renderChartAndSchedule() {
         const amountPerPayout = item.divTahun / months.length;
         months.forEach(m => {
           monthlyAmounts[m - 1] += amountPerPayout;
-          monthlyEmitens[m - 1].push(item.kode);
+          monthlyEmitens[m - 1].push({ kode: item.kode, amount: amountPerPayout });
         });
       }
     }
   });
 
-  // 1. Render Bar Chart
-  const ctx = document.getElementById('dividendChart')?.getContext('2d');
-  if (ctx) {
-    if (chartInstance) chartInstance.destroy();
+  // --- CHART 1: BAR CHART CASHFLOW BULANAN ---
+  const ctxBar = document.getElementById('dividendChart')?.getContext('2d');
+  if (ctxBar) {
+    if (barChartInstance) barChartInstance.destroy();
 
-    chartInstance = new Chart(ctx, {
+    barChartInstance = new Chart(ctxBar, {
       type: 'bar',
       data: {
         labels: monthNames,
         datasets: [{
-          label: 'Estimasi Dividen (Rp)',
+          label: 'Estimasi Dividen',
           data: monthlyAmounts,
-          backgroundColor: 'rgba(16, 185, 129, 0.65)',
+          backgroundColor: 'rgba(16, 185, 129, 0.7)',
           borderColor: '#10b981',
           borderWidth: 1.5,
           borderRadius: 6,
-          hoverBackgroundColor: 'rgba(16, 185, 129, 0.9)'
+          hoverBackgroundColor: 'rgba(16, 185, 129, 0.95)'
         }]
       },
       options: {
@@ -137,21 +143,28 @@ function renderChartAndSchedule() {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (context) => 'Dividen: ' + formatRp(context.raw)
+              label: (context) => 'Total: ' + formatRp(context.raw),
+              afterBody: (tooltipItems) => {
+                const monthIdx = tooltipItems[0].dataIndex;
+                const emitens = monthlyEmitens[monthIdx];
+                if (!emitens || emitens.length === 0) return '\nEmiten: Sepi';
+                let text = '\nEmiten Pembagi:\n';
+                emitens.forEach(e => {
+                  text += `• ${e.kode}: ${formatRp(e.amount)}\n`;
+                });
+                return text;
+              }
             }
           }
         },
         scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: '#94a3b8', font: { size: 10 } }
-          },
+          x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
           y: {
             grid: { color: 'rgba(30, 41, 59, 0.5)' },
             ticks: {
               color: '#94a3b8',
               font: { size: 10 },
-              callback: (val) => 'Rp ' + (val / 1000000).toFixed(1) + ' Jt'
+              callback: (val) => 'Rp ' + (val / 1000000).toFixed(1) + 'Jt'
             }
           }
         }
@@ -159,31 +172,134 @@ function renderChartAndSchedule() {
     });
   }
 
-  // 2. Render Matrix Jadwal Dividen Grid
-  const scheduleGrid = document.getElementById('monthlyScheduleGrid');
-  if (scheduleGrid) {
-    scheduleGrid.innerHTML = '';
-    monthNames.forEach((month, idx) => {
-      const amount = monthlyAmounts[idx];
-      const emitens = monthlyEmitens[idx];
-      const hasDiv = amount > 0;
+  // --- CHART 2: DONUT CHART KONTRIBUSI EMITEN ---
+  const ctxDonut = document.getElementById('shareChart')?.getContext('2d');
+  if (ctxDonut) {
+    if (donutChartInstance) donutChartInstance.destroy();
 
-      scheduleGrid.innerHTML += `
-        <div class="p-2.5 rounded-xl border ${hasDiv ? 'bg-slate-800/80 border-emerald-500/40' : 'bg-slate-950/40 border-slate-800/60'} transition">
-          <div class="flex justify-between items-center mb-1">
-            <span class="font-bold text-xs ${hasDiv ? 'text-emerald-400' : 'text-slate-500'}">${month}</span>
-            <span class="text-[9px] font-semibold text-slate-400">${hasDiv ? formatRp(amount) : '-'}</span>
-          </div>
-          <div class="text-[9px] text-slate-300 truncate font-mono">
-            ${emitens.length > 0 ? emitens.join(', ') : '<span class="text-slate-600">Sepi</span>'}
-          </div>
-        </div>
-      `;
+    const donutLabels = activeDividendStocks.map(s => s.kode);
+    const donutData = activeDividendStocks.map(s => s.divTahun);
+    const donutColors = [
+      '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
+      '#06b6d4', '#6366f1', '#14b8a6', '#f43f5e', '#64748b'
+    ];
+
+    donutChartInstance = new Chart(ctxDonut, {
+      type: 'doughnut',
+      data: {
+        labels: donutLabels,
+        datasets: [{
+          data: donutData,
+          backgroundColor: donutColors.slice(0, donutLabels.length),
+          borderColor: '#0f172a',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 12 }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const val = ctx.raw;
+                const pct = totalDivAll > 0 ? ((val / totalDivAll) * 100).toFixed(1) : 0;
+                return ` ${ctx.label}: ${formatRp(val)} (${pct}%)`;
+              }
+            }
+          }
+        },
+        cutout: '68%'
+      }
     });
   }
 }
 
-// Render Data Table & KPI
+// 2. Evaluasi Kesesuaian Portofolio vs Dividen (Portfolio Alignment)
+function evaluatePortfolioAlignment() {
+  const underweightList = document.getElementById('underweightList');
+  const balancedList = document.getElementById('balancedList');
+  const watchlistList = document.getElementById('watchlistList');
+
+  if (!underweightList || !balancedList || !watchlistList) return;
+
+  underweightList.innerHTML = '';
+  balancedList.innerHTML = '';
+  watchlistList.innerHTML = '';
+
+  let uwCount = 0, balCount = 0, wlCount = 0;
+  let totalOwnedCount = 0;
+  let optimalCount = 0;
+
+  rawData.forEach(item => {
+    // Kriteria Yield Tinggi jika Yield >= 5%
+    const isHighYield = item.yieldPct >= 5.0;
+    const isOwned = item.lot > 0;
+
+    if (isOwned) totalOwnedCount++;
+
+    if (!isOwned && isHighYield) {
+      // Underweight / Diskon Siap Beli
+      uwCount++;
+      underweightList.innerHTML += `
+        <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-purple-800/40">
+          <div>
+            <span class="font-bold text-white">${item.kode}</span>
+            <span class="text-[10px] text-purple-300 ml-1">Yield: ${item.yieldPct}%</span>
+          </div>
+          <span class="text-[9px] bg-purple-900/60 text-purple-200 px-2 py-0.5 rounded font-bold">0 Lot (Siap Beli)</span>
+        </div>
+      `;
+    } else if (isOwned && isHighYield) {
+      // Balanced / Alokasi Optimal
+      balCount++;
+      optimalCount++;
+      balancedList.innerHTML += `
+        <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-emerald-800/40">
+          <div>
+            <span class="font-bold text-white">${item.kode}</span>
+            <span class="text-[10px] text-emerald-300 ml-1">Yield: ${item.yieldPct}%</span>
+          </div>
+          <span class="text-[10px] text-slate-300 font-medium">${item.lot} Lot</span>
+        </div>
+      `;
+    } else {
+      // Watchlist / Low Yield
+      wlCount++;
+      watchlistList.innerHTML += `
+        <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+          <div>
+            <span class="font-bold text-slate-300">${item.kode}</span>
+            <span class="text-[10px] text-slate-500 ml-1">Yield: ${item.yieldPct}%</span>
+          </div>
+          <span class="text-[10px] text-slate-400">${item.lot > 0 ? item.lot + ' Lot' : 'Watchlist'}</span>
+        </div>
+      `;
+    }
+  });
+
+  document.getElementById('underweightCount').innerText = uwCount;
+  document.getElementById('balancedCount').innerText = balCount;
+  document.getElementById('watchlistCount').innerText = wlCount;
+
+  // Calculate Alignment Score
+  const score = totalOwnedCount > 0 ? Math.round((optimalCount / totalOwnedCount) * 100) : 0;
+  const badge = document.getElementById('alignmentScoreBadge');
+  if (badge) {
+    badge.innerText = `Skor Optimalisasi Dividen: ${score}%`;
+    if (score >= 70) {
+      badge.className = "text-xs font-bold px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-300 border border-emerald-700/50";
+    } else {
+      badge.className = "text-xs font-bold px-3 py-1 rounded-full bg-purple-900/50 text-purple-300 border border-purple-700/50";
+    }
+  }
+}
+
+// Render Table
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   if (!tbody) return;
@@ -284,7 +400,7 @@ function sortData(column) {
   renderTable();
 }
 
-// Modal Edit
+// Modal Handlers
 function openModal(rowIdx) {
   const item = rawData.find(d => d.rowIdx === rowIdx);
   if (!item) return;
@@ -363,7 +479,7 @@ async function saveData(e) {
   }
 }
 
-// Toast
+// Toast System
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
