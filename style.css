@@ -2,9 +2,10 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #020617;
@@ -12,6 +13,9 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #1e293b;
   border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -22,6 +26,37 @@ body {
   scrollbar-width: none;
 }
 
+/* FREEZE / STICKY TABLE SETTINGS */
+.table-freeze-container {
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: auto;
+  position: relative;
+}
+
+/* Freeze Header (Vertical Scroll) */
+.sticky-header th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Freeze First Column / Emiten (Horizontal Scroll) */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: #090d16;
+}
+
+.sticky-header th.sticky-col {
+  z-index: 30;
+  background-color: #0f172a;
+}
+
+/* Filter Tabs */
 .filter-tab {
   padding: 5px 12px;
   border-radius: 8px;
@@ -46,6 +81,7 @@ body {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
+/* Modal Slide Animation */
 .modal-animation {
   animation: modalSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -61,6 +97,7 @@ body {
   }
 }
 
+/* Toast Animation */
 .toast-enter {
   animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
