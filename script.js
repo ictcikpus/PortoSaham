@@ -1,5 +1,5 @@
 // =======================================================
-// SYSTEM CONTROLLER: script.js
+// CONTROLLER: script.js (AUTOMATIC WEIGHTED AVERAGE MULTI-BROKER)
 // =======================================================
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzv8DyVt1Iv9BLmG1C01tpbScJy_iYmIblFFS1wh5RGfzkGQakOuLGdjhBN9U-LziY4Ow/exec";
@@ -21,7 +21,7 @@ function formatRp(num) {
   return 'Rp ' + Math.round(num).toLocaleString('id-ID');
 }
 
-// Authentication Handlers
+// Auth Handlers
 async function handleLogin(e) {
   e.preventDefault();
   const pin = document.getElementById('pinInput').value.trim();
@@ -54,7 +54,7 @@ function handleLogout() {
   showToast('Sesi telah berakhir', 'info');
 }
 
-// Fetch API Data
+// Fetch API
 async function fetchData() {
   const pin = getSavedPin();
   if (!pin) return false;
@@ -72,15 +72,11 @@ async function fetchData() {
     if (!res.ok) throw new Error('HTTP Error ' + res.status);
     
     const result = await res.json();
-    
-    if (result.status === "unauthorized") {
-      return false;
-    }
+    if (result.status === "unauthorized") return false;
 
     rawData = result;
     renderTable();
     renderInteractiveCharts();
-    evaluatePortfolioAlignment();
     return true;
   } catch (err) {
     console.error('API Error:', err);
@@ -92,7 +88,7 @@ async function fetchData() {
   }
 }
 
-// Interactive Charts (Cashflow Bar Chart & Share Donut Chart)
+// Interactive Charts
 function renderInteractiveCharts() {
   let monthlyAmounts = new Array(12).fill(0);
   let monthlyEmitens = Array.from({ length: 12 }, () => []);
@@ -116,7 +112,7 @@ function renderInteractiveCharts() {
     }
   });
 
-  // 1. Bar Chart Cashflow Bulanan
+  // Bar Chart
   const ctxBar = document.getElementById('dividendChart')?.getContext('2d');
   if (ctxBar) {
     if (barChartInstance) barChartInstance.destroy();
@@ -131,65 +127,33 @@ function renderInteractiveCharts() {
           backgroundColor: 'rgba(16, 185, 129, 0.7)',
           borderColor: '#10b981',
           borderWidth: 1.5,
-          borderRadius: 6,
-          hoverBackgroundColor: 'rgba(16, 185, 129, 0.95)'
+          borderRadius: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (context) => 'Total: ' + formatRp(context.raw),
-              afterBody: (tooltipItems) => {
-                const monthIdx = tooltipItems[0].dataIndex;
-                const emitens = monthlyEmitens[monthIdx];
-                if (!emitens || emitens.length === 0) return '\nEmiten: Tidak ada cair';
-                let text = '\nEmiten Cair:\n';
-                emitens.forEach(e => {
-                  text += `• ${e.kode}: ${formatRp(e.amount)}\n`;
-                });
-                return text;
-              }
-            }
-          }
-        },
+        plugins: { legend: { display: false } },
         scales: {
           x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
-          y: {
-            grid: { color: 'rgba(30, 41, 59, 0.5)' },
-            ticks: {
-              color: '#94a3b8',
-              font: { size: 10 },
-              callback: (val) => 'Rp ' + (val / 1000000).toFixed(1) + 'Jt'
-            }
-          }
+          y: { grid: { color: 'rgba(30, 41, 59, 0.5)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
         }
       }
     });
   }
 
-  // 2. Donut Chart Distribusi Dividen
+  // Donut Chart
   const ctxDonut = document.getElementById('shareChart')?.getContext('2d');
   if (ctxDonut) {
     if (donutChartInstance) donutChartInstance.destroy();
 
-    const donutLabels = activeDividendStocks.map(s => s.kode);
-    const donutData = activeDividendStocks.map(s => s.divTahun);
-    const donutColors = [
-      '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b',
-      '#06b6d4', '#6366f1', '#14b8a6', '#f43f5e', '#64748b'
-    ];
-
     donutChartInstance = new Chart(ctxDonut, {
       type: 'doughnut',
       data: {
-        labels: donutLabels,
+        labels: activeDividendStocks.map(s => s.kode),
         datasets: [{
-          data: donutData,
-          backgroundColor: donutColors.slice(0, donutLabels.length),
+          data: activeDividendStocks.map(s => s.divTahun),
+          backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4', '#6366f1', '#14b8a6'],
           borderColor: '#0f172a',
           borderWidth: 2
         }]
@@ -197,103 +161,14 @@ function renderInteractiveCharts() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 12 }
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const val = ctx.raw;
-                const pct = totalDivAll > 0 ? ((val / totalDivAll) * 100).toFixed(1) : 0;
-                return ` ${ctx.label}: ${formatRp(val)} (${pct}%)`;
-              }
-            }
-          }
-        },
+        plugins: { legend: { position: 'right', labels: { color: '#cbd5e1', font: { size: 10 } } } },
         cutout: '68%'
       }
     });
   }
 }
 
-// Portfolio Alignment Evaluation Strategy
-function evaluatePortfolioAlignment() {
-  const underweightList = document.getElementById('underweightList');
-  const balancedList = document.getElementById('balancedList');
-  const watchlistList = document.getElementById('watchlistList');
-
-  if (!underweightList || !balancedList || !watchlistList) return;
-
-  underweightList.innerHTML = '';
-  balancedList.innerHTML = '';
-  watchlistList.innerHTML = '';
-
-  let uwCount = 0, balCount = 0, wlCount = 0;
-  let totalOwnedCount = 0;
-  let optimalCount = 0;
-
-  rawData.forEach(item => {
-    const isHighYield = item.yieldPct >= 5.0;
-    const isOwned = item.lot > 0;
-
-    if (isOwned) totalOwnedCount++;
-
-    if (!isOwned && isHighYield) {
-      uwCount++;
-      underweightList.innerHTML += `
-        <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-purple-800/40">
-          <div>
-            <span class="font-bold text-white">${item.kode}</span>
-            <span class="text-[10px] text-purple-300 ml-1">Yield: ${item.yieldPct}%</span>
-          </div>
-          <span class="text-[9px] bg-purple-900/60 text-purple-200 px-2 py-0.5 rounded font-bold">0 Lot (Siap Beli)</span>
-        </div>
-      `;
-    } else if (isOwned && isHighYield) {
-      balCount++;
-      optimalCount++;
-      balancedList.innerHTML += `
-        <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-emerald-800/40">
-          <div>
-            <span class="font-bold text-white">${item.kode}</span>
-            <span class="text-[10px] text-emerald-300 ml-1">Yield: ${item.yieldPct}%</span>
-          </div>
-          <span class="text-[10px] text-slate-300 font-medium">${item.lot} Lot</span>
-        </div>
-      `;
-    } else {
-      wlCount++;
-      watchlistList.innerHTML += `
-        <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-slate-800">
-          <div>
-            <span class="font-bold text-slate-300">${item.kode}</span>
-            <span class="text-[10px] text-slate-500 ml-1">Yield: ${item.yieldPct}%</span>
-          </div>
-          <span class="text-[10px] text-slate-400">${item.lot > 0 ? item.lot + ' Lot' : 'Watchlist'}</span>
-        </div>
-      `;
-    }
-  });
-
-  document.getElementById('underweightCount').innerText = uwCount;
-  document.getElementById('balancedCount').innerText = balCount;
-  document.getElementById('watchlistCount').innerText = wlCount;
-
-  const score = totalOwnedCount > 0 ? Math.round((optimalCount / totalOwnedCount) * 100) : 0;
-  const badge = document.getElementById('alignmentScoreBadge');
-  if (badge) {
-    badge.innerText = `Skor Optimal Dividen: ${score}%`;
-    if (score >= 70) {
-      badge.className = "text-xs font-bold px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-300 border border-emerald-700/50";
-    } else {
-      badge.className = "text-xs font-bold px-3 py-1 rounded-full bg-purple-900/50 text-purple-300 border border-purple-700/50";
-    }
-  }
-}
-
-// Render Table with Frozen First Column Ticker
+// Render Table
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   if (!tbody) return;
@@ -316,10 +191,7 @@ function renderTable() {
     dataToRender.sort((a, b) => {
       let valA = a[sortColumn];
       let valB = b[sortColumn];
-      if (typeof valA === 'string') {
-        return sortAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      }
-      return sortAscending ? valA - valB : valB - valA;
+      return sortAscending ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
     });
   }
 
@@ -334,19 +206,25 @@ function renderTable() {
     const glColor = item.gainLoss >= 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold';
     const glPrefix = item.gainLoss >= 0 ? '+' : '';
 
+    // Badges Sekuritas
+    let brokerBadges = '';
+    if (item.lotIPOT > 0) brokerBadges += `<span class="text-[9px] bg-blue-900/50 text-blue-300 border border-blue-700/50 px-1.5 py-0.5 rounded mr-1">IPOT: ${item.lotIPOT}</span>`;
+    if (item.lotHOTS > 0) brokerBadges += `<span class="text-[9px] bg-amber-900/50 text-amber-300 border border-amber-700/50 px-1.5 py-0.5 rounded mr-1">HOTS: ${item.lotHOTS}</span>`;
+    if (item.lotSB > 0)   brokerBadges += `<span class="text-[9px] bg-emerald-900/50 text-emerald-300 border border-emerald-700/50 px-1.5 py-0.5 rounded">SB: ${item.lotSB}</span>`;
+    if (!brokerBadges) brokerBadges = '<span class="text-slate-500 text-[10px]">-</span>';
+
     tbody.innerHTML += `
       <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/40">
-        <!-- Freeze Column Ticker -->
         <td class="py-3 px-3.5 sticky-col">
           <div class="font-bold text-white">${item.kode}</div>
           <div class="text-[10px] text-slate-400 max-w-[100px] truncate">${item.nama}</div>
         </td>
-        <td class="py-3 px-3.5 font-medium">${item.lot}</td>
-        <td class="py-3 px-3.5">${formatRp(item.avgBeli)}</td>
+        <td class="py-3 px-3.5 font-semibold text-white">${item.lot}</td>
+        <td class="py-3 px-3.5 font-medium text-blue-400">${formatRp(item.avgBeli)}</td>
         <td class="py-3 px-3.5 font-semibold text-white">${formatRp(item.hargaSkrg)}</td>
         <td class="py-3 px-3.5 ${glColor}">${glPrefix}${item.gainLoss}%</td>
         <td class="py-3 px-3.5 font-medium text-emerald-400">${item.yieldPct}%</td>
-        <td class="py-3 px-3.5 font-medium text-blue-400">${item.yocPct}%</td>
+        <td class="py-3 px-3.5">${brokerBadges}</td>
         <td class="py-3 px-3.5 text-slate-400 font-mono text-[10px]">${item.bulanDiv || '-'}</td>
         <td class="py-3 px-3.5">
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${item.signalClass}">
@@ -371,40 +249,35 @@ function renderTable() {
   if (document.getElementById('monthlySalary')) document.getElementById('monthlySalary').innerText = formatRp(monthlySalary);
 }
 
-function handleSearch() {
+function handleSearch() { renderTable(); }
+function setFilter(type) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active-tab'));
+  const map = { 'ALL': 'tabALL', 'TAKE PROFIT': 'tabTP', 'BUY ON DIP': 'tabDIP', 'SIAP BELI': 'tabBUY', 'HOLD': 'tabHOLD' };
+  if (map[type]) document.getElementById(map[type])?.classList.add('active-tab');
+  renderTable();
+}
+function sortData(col) {
+  sortAscending = sortColumn === col ? !sortAscending : true;
+  sortColumn = col;
   renderTable();
 }
 
-function setFilter(filterType) {
-  currentFilter = filterType;
-  document.querySelectorAll('.filter-tab').forEach(btn => btn.classList.remove('active-tab'));
-  
-  const activeBtnMap = { 'ALL': 'tabALL', 'TAKE PROFIT': 'tabTP', 'BUY ON DIP': 'tabDIP', 'SIAP BELI': 'tabBUY', 'HOLD': 'tabHOLD' };
-  if (activeBtnMap[filterType]) {
-    document.getElementById(activeBtnMap[filterType])?.classList.add('active-tab');
-  }
-  renderTable();
-}
-
-function sortData(column) {
-  if (sortColumn === column) {
-    sortAscending = !sortAscending;
-  } else {
-    sortColumn = column;
-    sortAscending = true;
-  }
-  renderTable();
-}
-
-// Modal Live Input & Calculation
+// Modal Live Calculation
 function openModal(rowIdx) {
   const item = rawData.find(d => d.rowIdx === rowIdx);
   if (!item) return;
 
   document.getElementById('editRowIdx').value = item.rowIdx;
-  document.getElementById('modalTitle').innerText = 'Update ' + item.kode;
-  document.getElementById('editLot').value = item.lot;
-  document.getElementById('editAvg').value = item.avgBeli;
+  document.getElementById('modalTitle').innerText = 'Update Multi Sekuritas ' + item.kode;
+  
+  document.getElementById('editLotIPOT').value = item.lotIPOT || '';
+  document.getElementById('editAvgIPOT').value = item.avgIPOT || '';
+  document.getElementById('editLotHOTS').value = item.lotHOTS || '';
+  document.getElementById('editAvgHOTS').value = item.avgHOTS || '';
+  document.getElementById('editLotSB').value   = item.lotSB || '';
+  document.getElementById('editAvgSB').value   = item.avgSB || '';
+  
   document.getElementById('editHarga').value = item.hargaSkrg;
   document.getElementById('editDPS').value = item.dps;
   document.getElementById('editBulanDiv').value = item.bulanDiv || '';
@@ -418,19 +291,26 @@ function closeModal() {
 }
 
 function liveCalculateModal() {
-  const lot = Number(document.getElementById('editLot').value) || 0;
-  const avg = Number(document.getElementById('editAvg').value) || 0;
+  const lotIPOT = Number(document.getElementById('editLotIPOT').value) || 0;
+  const avgIPOT = Number(document.getElementById('editAvgIPOT').value) || 0;
+  const lotHOTS = Number(document.getElementById('editLotHOTS').value) || 0;
+  const avgHOTS = Number(document.getElementById('editAvgHOTS').value) || 0;
+  const lotSB   = Number(document.getElementById('editLotSB').value) || 0;
+  const avgSB   = Number(document.getElementById('editAvgSB').value) || 0;
+
   const harga = Number(document.getElementById('editHarga').value) || 0;
-  const dps = Number(document.getElementById('editDPS').value) || 0;
+  const dps   = Number(document.getElementById('editDPS').value) || 0;
 
-  const yieldPct = harga > 0 ? ((dps / harga) * 100).toFixed(2) : 0;
-  const yocPct = avg > 0 ? ((dps / avg) * 100).toFixed(2) : 0;
-  const glPct = avg > 0 ? (((harga - avg) / avg) * 100).toFixed(2) : 0;
-  const totalDiv = lot * 100 * dps;
+  const totalLot = lotIPOT + lotHOTS + lotSB;
+  const totalModal = (lotIPOT * 100 * avgIPOT) + (lotHOTS * 100 * avgHOTS) + (lotSB * 100 * avgSB);
+  const weightedAvg = totalLot > 0 ? (totalModal / (totalLot * 100)) : 0;
+  
+  const yocPct = weightedAvg > 0 ? ((dps / weightedAvg) * 100).toFixed(2) : 0;
+  const totalDiv = totalLot * 100 * dps;
 
-  document.getElementById('previewYield').innerText = yieldPct + '%';
+  document.getElementById('previewTotalLot').innerText = totalLot + ' Lot';
+  document.getElementById('previewWeightedAvg').innerText = formatRp(weightedAvg);
   document.getElementById('previewYOC').innerText = yocPct + '%';
-  document.getElementById('previewGL').innerText = (glPct >= 0 ? '+' : '') + glPct + '%';
   document.getElementById('previewDiv').innerText = formatRp(totalDiv);
 }
 
@@ -446,10 +326,14 @@ async function saveData(e) {
   const payload = {
     pin: pin,
     rowIdx: Number(document.getElementById('editRowIdx').value),
-    lot: Number(document.getElementById('editLot').value),
-    avgBeli: Number(document.getElementById('editAvg').value),
-    hargaSkrg: Number(document.getElementById('editHarga').value),
-    dps: Number(document.getElementById('editDPS').value),
+    lotIPOT: Number(document.getElementById('editLotIPOT').value) || 0,
+    avgIPOT: Number(document.getElementById('editAvgIPOT').value) || 0,
+    lotHOTS: Number(document.getElementById('editLotHOTS').value) || 0,
+    avgHOTS: Number(document.getElementById('editAvgHOTS').value) || 0,
+    lotSB: Number(document.getElementById('editLotSB').value) || 0,
+    avgSB: Number(document.getElementById('editAvgSB').value) || 0,
+    hargaSkrg: Number(document.getElementById('editHarga').value) || 0,
+    dps: Number(document.getElementById('editDPS').value) || 0,
     bulanDiv: document.getElementById('editBulanDiv').value.trim()
   };
 
@@ -466,7 +350,7 @@ async function saveData(e) {
       return;
     }
 
-    showToast('Data berhasil diperbarui!', 'success');
+    showToast('Data multi-sekuritas disimpan!', 'success');
     closeModal();
     await fetchData();
   } catch (err) {
@@ -477,22 +361,17 @@ async function saveData(e) {
   }
 }
 
-// Toast System
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
-
   const toast = document.createElement('div');
   const bgClass = type === 'success' ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-rose-950/90 border-rose-800 text-rose-200';
-  
   toast.className = `px-3.5 py-2.5 rounded-xl border backdrop-blur-md text-xs font-semibold shadow-xl toast-enter flex items-center gap-2 pointer-events-auto ${bgClass}`;
   toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span> <span>${message}</span>`;
-  
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
 }
 
-// Initialization
 window.onload = async function() {
   const pin = getSavedPin();
   if (pin) {
