@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Dividen Pro - Portfolio Manager</title>
+  <title>Dividen Pro - Multi Sekuritas Portfolio</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,7 +13,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen pb-12 antialiased selection:bg-blue-600 selection:text-white">
 
-  <!-- Toast Notification Container -->
+  <!-- Toast Container -->
   <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
 
   <!-- LOGIN SCREEN -->
@@ -37,7 +37,7 @@
     </div>
   </div>
 
-  <!-- MAIN DASHBOARD APP -->
+  <!-- MAIN DASHBOARD -->
   <div id="mainApp" class="hidden">
     <!-- Navbar -->
     <nav class="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
@@ -48,7 +48,7 @@
           </div>
           <div>
             <h1 class="font-bold text-base text-white tracking-tight leading-none">Dividen Pro</h1>
-            <span class="text-[10px] text-slate-400">Personal Dividend Strategy Engine</span>
+            <span class="text-[10px] text-slate-400">Multi Broker (IPOT • HOTS • Stockbit)</span>
           </div>
         </div>
         
@@ -65,7 +65,7 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
-      <!-- KPI Summary Cards -->
+      <!-- KPI Cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <div class="bg-slate-900/70 border border-slate-800/80 p-4 sm:p-5 rounded-2xl">
           <span class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Nilai Pasar</span>
@@ -76,31 +76,28 @@
           <h2 id="totalReturn" class="text-base sm:text-2xl font-bold text-white mt-1 truncate">0.00%</h2>
         </div>
         <div class="bg-slate-900/70 border border-slate-800/80 p-4 sm:p-5 rounded-2xl">
-          <span class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider block">Estimasi Dividen / Tahun</span>
+          <span class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider block">Estimasi Dividen / Thn</span>
           <h2 id="totalDiv" class="text-base sm:text-2xl font-bold text-emerald-400 mt-1 truncate">Rp 0</h2>
         </div>
         <div class="bg-slate-900/70 border border-slate-800/80 p-4 sm:p-5 rounded-2xl">
-          <span class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider block">Rata-rata Gaji Pasif / Bulan</span>
+          <span class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider block">Gaji Pasif / Bulan</span>
           <h2 id="monthlySalary" class="text-base sm:text-2xl font-bold text-blue-400 mt-1 truncate">Rp 0</h2>
         </div>
       </div>
 
-      <!-- GRAFIK INTERAKTIF SECTION -->
+      <!-- GRAFIK SECTION -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-        <!-- Chart 1: Cashflow Bulanan (7 Cols) -->
         <div class="lg:col-span-7 bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-2xl shadow-xl backdrop-blur-sm">
           <div class="flex justify-between items-center mb-4">
             <h3 class="font-bold text-white text-xs sm:text-sm flex items-center gap-2">
               📊 Cashflow Dividen Bulanan (Jan – Des)
             </h3>
-            <span class="text-[10px] text-slate-400 font-medium hidden sm:inline">Hover/Klik batang untuk detail</span>
           </div>
           <div class="h-60 sm:h-64 relative">
             <canvas id="dividendChart"></canvas>
           </div>
         </div>
 
-        <!-- Chart 2: Kontribusi Dividen per Emiten (5 Cols) -->
         <div class="lg:col-span-5 bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-2xl shadow-xl backdrop-blur-sm flex flex-col justify-between">
           <div class="flex justify-between items-center mb-2">
             <h3 class="font-bold text-white text-xs sm:text-sm flex items-center gap-2">
@@ -113,57 +110,10 @@
         </div>
       </div>
 
-      <!-- DECISION & ALIGNMENT PANEL -->
-      <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-2xl shadow-xl backdrop-blur-sm mb-6">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-slate-800">
-          <div>
-            <h3 class="font-bold text-white text-xs sm:text-sm flex items-center gap-2">
-              🎯 Evaluasi Kesesuaian Portofolio vs Strategi Dividen
-            </h3>
-            <p class="text-[11px] text-slate-400">Rekomendasi alokasi untuk memastikan penerimaan dividen rutin setiap 1–3 bulan.</p>
-          </div>
-          <span id="alignmentScoreBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-blue-900/40 text-blue-300 border border-blue-700/50">
-            Skor Optimal: 0%
-          </span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Underweight Card -->
-          <div class="bg-slate-950/50 border border-purple-900/40 p-3.5 rounded-xl">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-purple-400 flex items-center gap-1.5">⚡ Peluang Tambah Lot (Underweight)</span>
-              <span id="underweightCount" class="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded-full font-bold">0</span>
-            </div>
-            <p class="text-[10px] text-slate-400 mb-2">Yield Dividen tinggi namun porsi lot masih sedikit / terdiskon.</p>
-            <div id="underweightList" class="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar text-xs"></div>
-          </div>
-
-          <!-- Balanced Card -->
-          <div class="bg-slate-950/50 border border-emerald-900/40 p-3.5 rounded-xl">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">✅ Alokasi Seimbang (Balanced)</span>
-              <span id="balancedCount" class="text-[10px] bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded-full font-bold">0</span>
-            </div>
-            <p class="text-[10px] text-slate-400 mb-2">Alokasi modal sebanding dengan kontribusi dividen yang diterima.</p>
-            <div id="balancedList" class="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar text-xs"></div>
-          </div>
-
-          <!-- Watchlist Card -->
-          <div class="bg-slate-950/50 border border-slate-800 p-3.5 rounded-xl">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">📌 Watchlist / Evaluasi Yield</span>
-              <span id="watchlistCount" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">0</span>
-            </div>
-            <p class="text-[10px] text-slate-400 mb-2">Saham pantauan atau saham dengan imbal hasil dividen sedang.</p>
-            <div id="watchlistList" class="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar text-xs"></div>
-          </div>
-        </div>
-      </div>
-
       <!-- Filter & Search Toolbar -->
       <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-4">
         <div class="relative w-full sm:w-64">
-          <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Cari kode/nama emiten..." 
+          <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Cari emiten..." 
                  class="w-full bg-slate-900/90 border border-slate-800 text-slate-200 text-xs rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:border-blue-500 transition placeholder-slate-500">
           <span class="absolute left-2.5 top-2.5 text-slate-500 text-xs">🔍</span>
         </div>
@@ -177,10 +127,10 @@
         </div>
       </div>
 
-      <!-- FREEZE TABLE CONTAINER (STICKY HEADER & EMITEN COLUMN) -->
+      <!-- FREEZE TABLE CONTAINER -->
       <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl mb-12">
         <div class="p-4 border-b border-slate-800/80 flex justify-between items-center">
-          <h3 class="font-bold text-white text-xs sm:text-sm">Tabel Portofolio & Decision Sheet</h3>
+          <h3 class="font-bold text-white text-xs sm:text-sm">Tabel Portofolio Multi-Sekuritas</h3>
           <span id="loader" class="text-xs text-blue-400 animate-pulse font-medium">Memuat data...</span>
         </div>
 
@@ -188,17 +138,16 @@
           <table class="w-full text-left text-xs whitespace-nowrap">
             <thead>
               <tr class="sticky-header bg-slate-900 text-slate-400 uppercase font-semibold border-b border-slate-800/80 text-[10px] tracking-wider">
-                <!-- Frozen Column Ticker -->
                 <th class="py-3.5 px-3.5 sticky-col cursor-pointer hover:text-white" onclick="sortData('kode')">Emiten ⇕</th>
-                <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('lot')">Lot ⇕</th>
-                <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('avgBeli')">Avg Beli ⇕</th>
+                <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('lot')">Total Lot ⇕</th>
+                <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('avgBeli')">Avg Gabungan ⇕</th>
                 <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('hargaSkrg')">Harga Skrg ⇕</th>
                 <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('gainLoss')">Gain/Loss ⇕</th>
                 <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('yieldPct')">Yield (%) ⇕</th>
-                <th class="py-3.5 px-3.5 cursor-pointer hover:text-white" onclick="sortData('yocPct')">YOC (%) ⇕</th>
+                <th class="py-3.5 px-3.5">Rincian Sekuritas</th>
                 <th class="py-3.5 px-3.5">Bulan Div</th>
-                <th class="py-3.5 px-3.5">Sinyal Keputusan</th>
-                <th class="py-3.5 px-3.5 text-center">Kelola</th>
+                <th class="py-3.5 px-3.5">Sinyal</th>
+                <th class="py-3.5 px-3.5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody id="tableBody" class="divide-y divide-slate-800/60 text-slate-200"></tbody>
@@ -207,53 +156,87 @@
       </div>
     </main>
 
-    <!-- Interactive Edit Modal -->
+    <!-- MODAL MULTI-SEKURITAS INPUT -->
     <div id="modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center hidden p-0 sm:p-4 z-50">
-      <div class="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl max-w-md w-full p-5 shadow-2xl modal-animation">
+      <div class="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl max-w-lg w-full p-5 shadow-2xl modal-animation overflow-y-auto max-h-[90vh]">
         <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
-          <h3 id="modalTitle" class="text-sm font-bold text-white">Edit Saham</h3>
+          <h3 id="modalTitle" class="text-sm font-bold text-white">Edit Multi Sekuritas</h3>
           <button onclick="closeModal()" class="text-slate-400 hover:text-white text-base">✕</button>
         </div>
 
-        <form onsubmit="saveData(event)" class="space-y-3">
+        <form onsubmit="saveData(event)" class="space-y-3.5">
           <input type="hidden" id="editRowIdx">
           
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Lot</label>
-              <input type="number" id="editLot" oninput="liveCalculateModal()" required class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Avg Beli (Rp)</label>
-              <input type="number" id="editAvg" oninput="liveCalculateModal()" required class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Harga Running (Rp)</label>
-              <input type="number" id="editHarga" oninput="liveCalculateModal()" required class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Estimasi DPS (Rp)</label>
-              <input type="number" id="editDPS" oninput="liveCalculateModal()" required class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+          <!-- IPOT Section -->
+          <div class="bg-slate-950/60 border border-blue-900/40 p-3 rounded-xl space-y-2">
+            <span class="text-xs font-bold text-blue-400 flex items-center gap-1">🔷 IPOT (Indo Premier)</span>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Lot IPOT</label>
+                <input type="number" id="editLotIPOT" oninput="liveCalculateModal()" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Avg IPOT (Rp)</label>
+                <input type="number" id="editAvgIPOT" oninput="liveCalculateModal()" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+              </div>
             </div>
           </div>
 
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Bulan Dividen (contoh: 4,10)</label>
-            <input type="text" id="editBulanDiv" placeholder="misal: 6 atau 4,10" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+          <!-- HOTS Section -->
+          <div class="bg-slate-950/60 border border-amber-900/40 p-3 rounded-xl space-y-2">
+            <span class="text-xs font-bold text-amber-400 flex items-center gap-1">🟠 HOTS (Mirae Asset)</span>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Lot HOTS</label>
+                <input type="number" id="editLotHOTS" oninput="liveCalculateModal()" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Avg HOTS (Rp)</label>
+                <input type="number" id="editAvgHOTS" oninput="liveCalculateModal()" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+              </div>
+            </div>
           </div>
 
-          <!-- Live Preview Panel -->
-          <div class="bg-slate-950/60 border border-slate-800/80 p-3 rounded-xl space-y-1 text-[11px] text-slate-400 mt-2">
-            <div class="flex justify-between"><span>Current Yield:</span> <span id="previewYield" class="font-bold text-white">0%</span></div>
-            <div class="flex justify-between"><span>Yield on Cost (YOC):</span> <span id="previewYOC" class="font-bold text-blue-400">0%</span></div>
-            <div class="flex justify-between"><span>Estimasi Gain/Loss:</span> <span id="previewGL" class="font-bold text-white">0%</span></div>
-            <div class="flex justify-between"><span>Total Dividen / Thn:</span> <span id="previewDiv" class="font-bold text-emerald-400">Rp 0</span></div>
+          <!-- Stockbit Section -->
+          <div class="bg-slate-950/60 border border-emerald-900/40 p-3 rounded-xl space-y-2">
+            <span class="text-xs font-bold text-emerald-400 flex items-center gap-1">🟢 Stockbit</span>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Lot Stockbit</label>
+                <input type="number" id="editLotSB" oninput="liveCalculateModal()" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-400 mb-0.5">Avg Stockbit (Rp)</label>
+                <input type="number" id="editAvgSB" oninput="liveCalculateModal()" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+              </div>
+            </div>
           </div>
 
-          <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-800">
+          <!-- Market Data -->
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-400 mb-1">Harga Skrg</label>
+              <input type="number" id="editHarga" oninput="liveCalculateModal()" required class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-400 mb-1">DPS (Rp)</label>
+              <input type="number" id="editDPS" oninput="liveCalculateModal()" required class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-400 mb-1">Bulan Div</label>
+              <input type="text" id="editBulanDiv" placeholder="misal: 4,10" class="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white">
+            </div>
+          </div>
+
+          <!-- Live Automatic Weighted Average Preview -->
+          <div class="bg-blue-950/40 border border-blue-800/50 p-3 rounded-xl space-y-1 text-[11px] text-slate-300">
+            <div class="flex justify-between"><span>Total Lot Gabungan:</span> <span id="previewTotalLot" class="font-bold text-white">0 Lot</span></div>
+            <div class="flex justify-between"><span>Weighted Avg Beli:</span> <span id="previewWeightedAvg" class="font-bold text-blue-400">Rp 0</span></div>
+            <div class="flex justify-between"><span>Yield on Cost (YOC):</span> <span id="previewYOC" class="font-bold text-emerald-400">0%</span></div>
+            <div class="flex justify-between"><span>Dividen / Tahun:</span> <span id="previewDiv" class="font-bold text-emerald-400">Rp 0</span></div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
             <button type="button" onclick="closeModal()" class="px-3.5 py-2 text-xs font-medium text-slate-400 hover:text-white transition">Batal</button>
             <button type="submit" id="btnSave" class="px-4 py-2 text-xs bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition">Simpan Perubahan</button>
           </div>
