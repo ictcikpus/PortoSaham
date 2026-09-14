@@ -1,5 +1,5 @@
 // =======================================================
-// CONTROLLER: script.js (WITH INTERACTIVE CHARTS & ALIGNMENT EVALUATION)
+// SYSTEM CONTROLLER: script.js
 // =======================================================
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzv8DyVt1Iv9BLmG1C01tpbScJy_iYmIblFFS1wh5RGfzkGQakOuLGdjhBN9U-LziY4Ow/exec";
@@ -21,7 +21,7 @@ function formatRp(num) {
   return 'Rp ' + Math.round(num).toLocaleString('id-ID');
 }
 
-// Auth Handlers
+// Authentication Handlers
 async function handleLogin(e) {
   e.preventDefault();
   const pin = document.getElementById('pinInput').value.trim();
@@ -39,7 +39,7 @@ async function handleLogin(e) {
     showToast('Login berhasil', 'success');
   } else {
     sessionStorage.removeItem('dividen_pro_pin');
-    showToast('PIN Salah! Pastikan PIN di Apps Script sudah di-deploy Versi Baru.', 'error');
+    showToast('PIN Salah! Pastikan Apps Script di-deploy Versi Baru.', 'error');
   }
 
   btnLogin.innerText = "Buka Dashboard";
@@ -51,10 +51,10 @@ function handleLogout() {
   document.getElementById('mainApp').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('pinInput').value = '';
-  showToast('Sesi berakhir', 'info');
+  showToast('Sesi telah berakhir', 'info');
 }
 
-// Fetch API
+// Fetch API Data
 async function fetchData() {
   const pin = getSavedPin();
   if (!pin) return false;
@@ -88,16 +88,15 @@ async function fetchData() {
   } finally {
     if (loader) loader.classList.add('hidden');
     if (syncSpinner) syncSpinner.classList.add('hidden');
-    if (syncText) syncText.innerText = "Sync";
+    if (syncText) syncText.innerText = "Sync Data";
   }
 }
 
-// 1. Render Dual Interactive Charts (Bar + Donut)
+// Interactive Charts (Cashflow Bar Chart & Share Donut Chart)
 function renderInteractiveCharts() {
   let monthlyAmounts = new Array(12).fill(0);
   let monthlyEmitens = Array.from({ length: 12 }, () => []);
 
-  // Filter emiten yang dimiliki (lot > 0) dan membagikan dividen
   const activeDividendStocks = rawData.filter(d => d.lot > 0 && d.divTahun > 0);
   const totalDivAll = activeDividendStocks.reduce((sum, item) => sum + item.divTahun, 0);
 
@@ -117,7 +116,7 @@ function renderInteractiveCharts() {
     }
   });
 
-  // --- CHART 1: BAR CHART CASHFLOW BULANAN ---
+  // 1. Bar Chart Cashflow Bulanan
   const ctxBar = document.getElementById('dividendChart')?.getContext('2d');
   if (ctxBar) {
     if (barChartInstance) barChartInstance.destroy();
@@ -147,8 +146,8 @@ function renderInteractiveCharts() {
               afterBody: (tooltipItems) => {
                 const monthIdx = tooltipItems[0].dataIndex;
                 const emitens = monthlyEmitens[monthIdx];
-                if (!emitens || emitens.length === 0) return '\nEmiten: Sepi';
-                let text = '\nEmiten Pembagi:\n';
+                if (!emitens || emitens.length === 0) return '\nEmiten: Tidak ada cair';
+                let text = '\nEmiten Cair:\n';
                 emitens.forEach(e => {
                   text += `• ${e.kode}: ${formatRp(e.amount)}\n`;
                 });
@@ -172,7 +171,7 @@ function renderInteractiveCharts() {
     });
   }
 
-  // --- CHART 2: DONUT CHART KONTRIBUSI EMITEN ---
+  // 2. Donut Chart Distribusi Dividen
   const ctxDonut = document.getElementById('shareChart')?.getContext('2d');
   if (ctxDonut) {
     if (donutChartInstance) donutChartInstance.destroy();
@@ -219,7 +218,7 @@ function renderInteractiveCharts() {
   }
 }
 
-// 2. Evaluasi Kesesuaian Portofolio vs Dividen (Portfolio Alignment)
+// Portfolio Alignment Evaluation Strategy
 function evaluatePortfolioAlignment() {
   const underweightList = document.getElementById('underweightList');
   const balancedList = document.getElementById('balancedList');
@@ -236,14 +235,12 @@ function evaluatePortfolioAlignment() {
   let optimalCount = 0;
 
   rawData.forEach(item => {
-    // Kriteria Yield Tinggi jika Yield >= 5%
     const isHighYield = item.yieldPct >= 5.0;
     const isOwned = item.lot > 0;
 
     if (isOwned) totalOwnedCount++;
 
     if (!isOwned && isHighYield) {
-      // Underweight / Diskon Siap Beli
       uwCount++;
       underweightList.innerHTML += `
         <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-purple-800/40">
@@ -255,7 +252,6 @@ function evaluatePortfolioAlignment() {
         </div>
       `;
     } else if (isOwned && isHighYield) {
-      // Balanced / Alokasi Optimal
       balCount++;
       optimalCount++;
       balancedList.innerHTML += `
@@ -268,7 +264,6 @@ function evaluatePortfolioAlignment() {
         </div>
       `;
     } else {
-      // Watchlist / Low Yield
       wlCount++;
       watchlistList.innerHTML += `
         <div class="flex justify-between items-center bg-slate-900/80 p-2 rounded-lg border border-slate-800">
@@ -286,11 +281,10 @@ function evaluatePortfolioAlignment() {
   document.getElementById('balancedCount').innerText = balCount;
   document.getElementById('watchlistCount').innerText = wlCount;
 
-  // Calculate Alignment Score
   const score = totalOwnedCount > 0 ? Math.round((optimalCount / totalOwnedCount) * 100) : 0;
   const badge = document.getElementById('alignmentScoreBadge');
   if (badge) {
-    badge.innerText = `Skor Optimalisasi Dividen: ${score}%`;
+    badge.innerText = `Skor Optimal Dividen: ${score}%`;
     if (score >= 70) {
       badge.className = "text-xs font-bold px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-300 border border-emerald-700/50";
     } else {
@@ -299,7 +293,7 @@ function evaluatePortfolioAlignment() {
   }
 }
 
-// Render Table
+// Render Table with Frozen First Column Ticker
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   if (!tbody) return;
@@ -342,15 +336,17 @@ function renderTable() {
 
     tbody.innerHTML += `
       <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/40">
-        <td class="py-3 px-3.5">
+        <!-- Freeze Column Ticker -->
+        <td class="py-3 px-3.5 sticky-col">
           <div class="font-bold text-white">${item.kode}</div>
-          <div class="text-[10px] text-slate-400 max-w-[110px] truncate">${item.nama}</div>
+          <div class="text-[10px] text-slate-400 max-w-[100px] truncate">${item.nama}</div>
         </td>
         <td class="py-3 px-3.5 font-medium">${item.lot}</td>
         <td class="py-3 px-3.5">${formatRp(item.avgBeli)}</td>
         <td class="py-3 px-3.5 font-semibold text-white">${formatRp(item.hargaSkrg)}</td>
         <td class="py-3 px-3.5 ${glColor}">${glPrefix}${item.gainLoss}%</td>
-        <td class="py-3 px-3.5 font-medium">${item.yieldPct}%</td>
+        <td class="py-3 px-3.5 font-medium text-emerald-400">${item.yieldPct}%</td>
+        <td class="py-3 px-3.5 font-medium text-blue-400">${item.yocPct}%</td>
         <td class="py-3 px-3.5 text-slate-400 font-mono text-[10px]">${item.bulanDiv || '-'}</td>
         <td class="py-3 px-3.5">
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${item.signalClass}">
@@ -400,7 +396,7 @@ function sortData(column) {
   renderTable();
 }
 
-// Modal Handlers
+// Modal Live Input & Calculation
 function openModal(rowIdx) {
   const item = rawData.find(d => d.rowIdx === rowIdx);
   if (!item) return;
@@ -428,10 +424,12 @@ function liveCalculateModal() {
   const dps = Number(document.getElementById('editDPS').value) || 0;
 
   const yieldPct = harga > 0 ? ((dps / harga) * 100).toFixed(2) : 0;
+  const yocPct = avg > 0 ? ((dps / avg) * 100).toFixed(2) : 0;
   const glPct = avg > 0 ? (((harga - avg) / avg) * 100).toFixed(2) : 0;
   const totalDiv = lot * 100 * dps;
 
   document.getElementById('previewYield').innerText = yieldPct + '%';
+  document.getElementById('previewYOC').innerText = yocPct + '%';
   document.getElementById('previewGL').innerText = (glPct >= 0 ? '+' : '') + glPct + '%';
   document.getElementById('previewDiv').innerText = formatRp(totalDiv);
 }
@@ -474,7 +472,7 @@ async function saveData(e) {
   } catch (err) {
     showToast('Gagal menyimpan perubahan', 'error');
   } finally {
-    btnSave.innerText = 'Simpan';
+    btnSave.innerText = 'Simpan Perubahan';
     btnSave.disabled = false;
   }
 }
@@ -494,7 +492,7 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.remove(), 3500);
 }
 
-// Init
+// Initialization
 window.onload = async function() {
   const pin = getSavedPin();
   if (pin) {
