@@ -2,6 +2,15 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
+/* Glassmorphism Cards */
+.glass-card {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(30, 41, 59, 0.7);
+}
+
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -13,7 +22,6 @@ body {
   background: #1e293b;
   border-radius: 9999px;
 }
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -22,9 +30,9 @@ body {
   scrollbar-width: none;
 }
 
-/* FREEZE STICKY TABLE SETTINGS */
+/* Sticky Freeze Table */
 .table-freeze-container {
-  max-height: 520px;
+  max-height: 540px;
   overflow-y: auto;
   overflow-x: auto;
   position: relative;
@@ -50,10 +58,20 @@ body {
   background-color: #0f172a;
 }
 
+/* Mode Switcher Tabs */
+.mode-tab {
+  color: #94a3b8;
+}
+.active-mode {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
 /* Filter Tabs */
 .filter-tab {
-  padding: 5px 12px;
-  border-radius: 8px;
+  padding: 6px 14px;
+  border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
   color: #94a3b8;
@@ -62,12 +80,10 @@ body {
   white-space: nowrap;
   transition: all 0.2s ease;
 }
-
 .filter-tab:hover {
   color: #f8fafc;
   border-color: #334155;
 }
-
 .active-tab {
   background-color: #2563eb !important;
   color: #ffffff !important;
@@ -76,9 +92,8 @@ body {
 }
 
 .modal-animation {
-  animation: modalSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: modalSlide 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 @keyframes modalSlide {
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -87,7 +102,6 @@ body {
 .toast-enter {
   animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
 @keyframes toastIn {
   from { opacity: 0; transform: translateX(100%); }
   to { opacity: 1; transform: translateX(0); }
